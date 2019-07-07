@@ -1,3 +1,98 @@
 * {
     box-sizing: border-box;
 }
+
+#time-container {
+    display: grid;
+    justify-content: space-evenly;
+}
+
+#time {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#typing-words {
+    user-select: none;
+    font-family: Arial, serif;
+    font-size: 20px;
+    margin: 10px 0 2px 0;
+    text-align: center;
+}
+
+#userList {
+    display: grid;
+    font-size: 20px;
+    justify-content: center;
+    list-style-type: none;
+}
+
+#userList>li>progress {
+    margin: 0px 50px;
+}
+
+#until-end {
+    display: grid;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    justify-items: center;
+}
+
+#until-end>span {
+    font-size: 30px
+}
+
+.red-symbols {
+    color: #cc0e00;
+}
+
+.green-symbol {
+    color: #99cc00;
+}
+
+#txtInput {
+    color: #555;
+    height: 35px;
+    font-family: Arial, serif;
+    font-size: 26px;
+    margin-top: 2px;
+    margin-bottom: 10px;
+    background: transparent none repeat scroll 0;
+    border-width: medium;
+}
+
+#email-field,
+#pw-field {
+    border: black solid 2px;
+}
+
+#submit-btn {
+    width: 50%;
+}
+
+.unselectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
+
+#login-wrapper {
+    position: absolute;
+    display: grid;
+    grid-gap: 10px;
+    justify-items: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.text-container {
+    display: grid;
+    justify-content: center;
+    margin: 40px;
+}

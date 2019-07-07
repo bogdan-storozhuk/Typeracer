@@ -1,7 +1,7 @@
 window.onload = () => {
 
     const loginBtn = document.querySelector('#submit-btn');
-    const loginField = document.querySelector('#login-field');
+    const emailField = document.querySelector('#email-field');
     const pwField = document.querySelector('#pw-field');
 
     loginBtn.addEventListener('click', ev => {
@@ -11,15 +11,14 @@ window.onload = () => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                login: loginField.value,
+                login: emailField.value,
                 password: pwField.value
             })
         }).then(res => {
             res.json().then(body => {
-                console.log(body);
                 if (body.auth) {
                     localStorage.setItem('jwt', body.token);
-                    location.replace('/chat');
+                    location.replace('/typerace');
                 } else {
                     console.log('auth failed');
                 }

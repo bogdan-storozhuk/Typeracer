@@ -1,0 +1,25 @@
+<html>
+
+<head>
+    <title>Typeracer</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="typerace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.dev.js"></script>
+</head>
+
+<body>
+    <ul id="userList">
+    </ul>
+    <div id="typing-words">
+        <span id="words-left" class="unselectable"></span>
+    </div>
+    <div class='text-container'>
+        <input hidden disabled type="text" id="txtInput">
+    </div>
+    <div id='time-container'>
+        <div id='time'></div>
+    </div>
+    <div id='until-end'></div>
+</body>
+
+</html>

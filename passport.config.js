@@ -13,9 +13,12 @@ passport.use(new JwtStrategy(opts, async (payload, done) => {
         const user = users.find(userFromDB => {
             if (userFromDB.login === payload.login) {
                 return userFromDB;
-            }            
+            }
         });
-        return user ? done(null, user) : done({ status: 401, message: 'Token is invalid.' }, null);
+        return user ? done(null, user) : done({
+            status: 401,
+            message: 'Token is invalid.'
+        }, null);
     } catch (err) {
         return done(err);
     }
