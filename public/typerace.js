@@ -1,24 +1,34 @@
+import { Commentator } from './commentator';
 let text = '';
 let correctSymbolsNumber = 0;
 let users = [];
 let raceFinished = false;
 let userFinished = false;
+
 const onChangedConnectedUsers = (socket) => {
     socket.on('changedConnectedUsers', ({
-        connectedUsers
+        connectedUsers,
+        textLength
     }) => {
+        debugger;
         const userList = document.getElementById("userList");
         while (userList.firstChild) {
             userList.removeChild(userList.firstChild);
         }
 
-        connectedUsers.sort((a, b) => b.percent - a.percent);
-        connectedUsers.forEach(element => {
+        let topPlaces = connectedUsers.filter(item => item.position != null);
+        let particapants = connectedUsers.filter(item => item.position == null);
+        let allParticipants = [
+            ...topPlaces.sort((a, b) => a.position - b.position),
+            ...particapants.sort((a, b) => b.correctSymbols - a.correctSymbols)
+        ];
+
+        allParticipants.forEach(element => {
             const newListItem = document.createElement('li');
             const textElement = document.createTextNode(element.email);
             const progressBar = document.createElement("progress");
-            progressBar.setAttribute("value", element.percent);
-            progressBar.setAttribute("max", "100");
+            progressBar.setAttribute("value", element.correctSymbols);
+            progressBar.setAttribute("max", textLength);
 
             newListItem.appendChild(textElement);
             newListItem.appendChild(progressBar);
@@ -26,7 +36,7 @@ const onChangedConnectedUsers = (socket) => {
             userList.appendChild(newListItem);
         });
 
-        users = connectedUsers;
+        users = allParticipants;
     });
 }
 
@@ -60,8 +70,10 @@ const highlightText = (correctSymbolsNumber) => {
         const correctText = text.slice(0, correctSymbolsNumber);
         const nextSymbol = text[nextSymbolIndex];
         const remainingText = text.slice(nextSymbolIndex + 1);
-        textElement.innerHTML = (`<span class='red-symbols'>${correctText}</span>` +
-            `<span class='green-symbol'>${nextSymbol}</span>` + remainingText);
+        const nextSymbolText =  nextSymbol? `<span class='green-symbol'>${nextSymbol}</span>` : '';
+        textElement.innerHTML = (`<span class='red-symbols'>${correctText}</span>` 
+        + nextSymbolText
+        + remainingText);
     }
 
 }
@@ -126,8 +138,8 @@ window.onload = () => {
                                     token: jwt,
                                 });
                             }
-                            socket.emit('completedPercent', {
-                                percent: (correctSymbolsNumber / text.length) * 100,
+                            socket.emit('completedSymbols', {
+                                correctSymbols: correctSymbolsNumber,
                                 token: jwt,
                             });
                         });
@@ -167,6 +179,7 @@ window.onload = () => {
             users.forEach((value, index) => {
                 text += `${value.email} took ${index + 1} place <br>`;
             });
+
 
             const timer = document.getElementById('time');
             timer.innerHTML = text;
@@ -211,7 +224,17 @@ window.onload = () => {
             for (i = 0; i < users.length; i++) {
                 text += `${placementsWords[i]} ${connectedUsers[i].email}`;
             }
-            text+=`Гонка проходила ${timeSpent} секунд. `;
+            text += `Гонка проходила ${timeSpent} секунд. `;
+            SaySomething(text);
+        });
+        socket.on('commentatorAlmostFinished', ({
+            connectedUsers
+        }) => {
+            const placementsWords = ["До финиша осталось совсем немного и похоже что первым его может пересечь ", "Второе место может остаться", "А третье "];
+            let text = '';
+            for (i = 0; i < users.length; i++) {
+                text += `${placementsWords[i]} ${connectedUsers[i].email}`;
+            }
             SaySomething(text);
         });
     }
