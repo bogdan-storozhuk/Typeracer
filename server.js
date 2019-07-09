@@ -9,7 +9,7 @@ const bodyParser = require('body-parser');
 const users = require('./users.json');
 const fs = require('fs');
 const waitingTime = 20;
-const raceTime = 50;
+const raceTime = 60;
 let countdown = 20;
 let raceTimeCountDown = 60;
 const getRandomNumber = (min, max) => Math.floor(Math.random() * (max - min)) + min;
@@ -75,7 +75,12 @@ const startRace = () => {
     io.in(room).emit('raceTimer', {
       raceTimeCountDown
     });
-
+    if(raceTimeCountDown%30==0 && raceTimeCountDown!=raceTime-30){
+      io.in(room).emit('commentatorUpdateOnPosition')
+    }
+    if(raceTimeCountDown===raceTime-30){
+      io.in(room).emit('commentatorUpdateOnPosition')
+    }
 
     if (raceTimeCountDown <= 0) {
       raceStarted = false;
@@ -146,9 +151,13 @@ io.on('connection', socket => {
     if (connectedUsers.findIndex(item => item.email === -1)) {
       connectedUsers.push({
         email: userLogin,
-        percent: 0
+        percent: 0,
+        Isfinished:false
       });
     }
+
+    socket.emit("commentatorWelcome");
+    
 
     io.in(room).emit("changedConnectedUsers", {
       connectedUsers,
@@ -167,6 +176,29 @@ io.on('connection', socket => {
       io.in(room).emit("changedConnectedUsers", {
         connectedUsers
       });
+    }
+  });
+  // socket.on('someoneAlmostAtFinish',()=>{
+
+  // });
+  socket.on('CrossedTheFinishLine', ({
+    token
+  }) => {
+    const email = jwt.decode(token).login;
+    const index = connectedUsers.findIndex(item => item.email === email);
+    if (index !== -1) {
+      connectedUsers[index].Isfinished = true;
+      io.in(room).emit("AnnounceUserAtFinishLine", {
+        index
+      });
+      if(connectedUsers.every(user=>user.Isfinished===true)){
+        io.in(room).emit('raceFinished');
+        let timeSpent=raceTime-raceTimeCountDown;
+        io.in(room).emit('commentatorAnnouncePlacements',{
+          timeSpent,
+          connectedUsers
+        });
+      }
     }
   });
 });

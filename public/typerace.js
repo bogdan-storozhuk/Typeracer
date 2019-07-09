@@ -2,6 +2,7 @@ let text = '';
 let correctSymbolsNumber = 0;
 let users = [];
 let raceFinished = false;
+let userFinished = false;
 const onChangedConnectedUsers = (socket) => {
     socket.on('changedConnectedUsers', ({
         connectedUsers
@@ -116,6 +117,15 @@ window.onload = () => {
                             const checkedText = target.value;
                             correctSymbolsNumber = getCorrectSymbolsNumber(checkedText, text);
                             highlightText(correctSymbolsNumber);
+                            // if(text.length-correctSymbolsNumber===30){
+                            //     socket.emit('someoneAlmostAtFinish');
+                            // }
+                            if (correctSymbolsNumber === text.length && userFinished === false) {
+                                userFinished = true;
+                                socket.emit('CrossedTheFinishLine', {
+                                    token: jwt,
+                                });
+                            }
                             socket.emit('completedPercent', {
                                 percent: (correctSymbolsNumber / text.length) * 100,
                                 token: jwt,
@@ -169,6 +179,40 @@ window.onload = () => {
                 }
 
             }, 1000);
+        });
+        const SaySomething = (words) => {
+            const TextBubble = document.getElementById('commentatorText');
+            TextBubble.textContent = words;
+        }
+        socket.on('commentatorWelcome', () => {
+            const welcomeWords = "На улице сейчас немного пасмурно, но на Львов Арена сейчас просто замечательная атмосфера: двигатели рычат, зрители улыбаются а гонщики едва заметно нервничают и готовят своих железных коней до заезда. А комментировать это все действо Вам буду я, Эскейп Ентерович и я рад вас приветствовать со словами Доброго Вам дня господа!";
+            SaySomething(welcomeWords);
+        });
+        socket.on('commentatorUpdateOnPosition', () => {
+            const updateWords = ["На mersedes сейчас первый", "за ним идет", "а третьим идет", "за которым следует"];
+            let text = "";
+            for (i = 0; i < users.length; i++) {
+                text += `${updateWords[i]} ${users[i].email}`;
+            }
+            SaySomething(text);
+        });
+        socket.on('AnnounceUserAtFinishLine', ({
+            index
+        }) => {
+            let text = `${users[index].email} пересек финишную прямую.`;
+            SaySomething(text);
+        });
+        socket.on('commentatorAnnouncePlacements', ({
+            timeSpent,
+            connectedUsers
+        }) => {
+            const placementsWords = ["Финальный результат: первое место занимает", "второе место занимает", "а третьим пришел", "за которым следует"];
+            let text = '';
+            for (i = 0; i < users.length; i++) {
+                text += `${placementsWords[i]} ${connectedUsers[i].email}`;
+            }
+            text+=`Гонка проходила ${timeSpent} секунд. `;
+            SaySomething(text);
         });
     }
 }
