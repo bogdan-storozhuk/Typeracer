@@ -98,7 +98,7 @@
 }
 #commentator-container{
 
-    max-width: 20%;
+    max-width: 40%;
     top: 0px;
     right: 0px;
 }
@@ -113,7 +113,7 @@
 	content: '';
 	position: absolute;
 	bottom: 0;
-	left: 55%;
+	left: 25%;
 	width: 0;
 	height: 0;
 	border: 20px solid transparent;

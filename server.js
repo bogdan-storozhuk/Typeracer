@@ -16,6 +16,7 @@ const getRandomNumber = (min, max) => Math.floor(Math.random() * (max - min)) + 
 let textId = getRandomNumber(0, 3);
 let connectedUsers = [];
 let raceStarted = false;
+let raceFinished = false;
 let textLength;
 let room = 'room1';
 let position = 0;
@@ -43,10 +44,18 @@ app.get('/texts', passport.authenticate('jwt', {
 
   let rawdata = fs.readFileSync(path.join(__dirname, 'texts.json'));
   let result = JSON.parse(rawdata);
-  textLength= result[textId].length;
+  textLength = result[textId].length;
   res.send(result[textId]);
 });
+app.get('/facts', passport.authenticate('jwt', {
+  session: false
+}), function (req, res) {
 
+  let rawdata = fs.readFileSync(path.join(__dirname, 'facts.json'));
+  let result = JSON.parse(rawdata);
+  textLength = result[textId].length;
+  res.send(result[textId]);
+});
 
 app.get('/login', function (req, res) {
   res.sendFile(path.join(__dirname, 'login.html'));
@@ -71,6 +80,10 @@ app.post('/login', function (req, res) {
 });
 
 const startRace = () => {
+  raceFinished = false;
+  io.in(room).emit('commentatorAnnounceRacers', {
+    connectedUsers
+  });
   raceTimeCountDown = raceTime;
   let raceIntervalId = setInterval(() => {
 
@@ -78,12 +91,14 @@ const startRace = () => {
     io.in(room).emit('raceTimer', {
       raceTimeCountDown
     });
-    if(raceTimeCountDown % 30 == 0){
-      io.in(room).emit('commentatorUpdateOnPosition')
+    if (raceTimeCountDown % 30 == 0 && raceFinished == false) {
+      io.in(room).emit('commentatorUpdateOnPosition', {
+        raceTimeCountDown
+      });
     }
-    // if(raceTimeCountDown===raceTime-30){
-    //   io.in(room).emit('commentatorUpdateOnPosition')
-    // }
+    if (raceTimeCountDown % 15 == 0 && raceTimeCountDown % 30 != 0 && raceFinished == false) {
+      io.in(room).emit('commentatorFacts');
+    }
 
     if (raceTimeCountDown <= 0) {
       raceStarted = false;
@@ -157,12 +172,12 @@ io.on('connection', socket => {
       connectedUsers.push({
         email: userLogin,
         correctSymbols: 0,
-        Isfinished:false
+        Isfinished: false
       });
     }
 
     socket.emit("commentatorWelcome");
-    
+
 
     io.in(room).emit("changedConnectedUsers", {
       connectedUsers,
@@ -179,7 +194,7 @@ io.on('connection', socket => {
     const index = connectedUsers.findIndex(item => item.email === email);
     if (index !== -1) {
       connectedUsers[index].correctSymbols = correctSymbols;
-      if(connectedUsers[index].correctSymbols==textLength-30){
+      if (connectedUsers[index].correctSymbols == textLength - 30) {
         io.in(room).emit("commentatorAlmostFinished", {
           connectedUsers
         });
@@ -190,9 +205,7 @@ io.on('connection', socket => {
       });
     }
   });
-  // socket.on('someoneAlmostAtFinish',()=>{
 
-  // });
   socket.on('CrossedTheFinishLine', ({
     token
   }) => {
@@ -201,17 +214,19 @@ io.on('connection', socket => {
     if (index !== -1) {
       connectedUsers[index].Isfinished = true;
       connectedUsers[index].position = position++;
-      io.in(room).emit("AnnounceUserAtFinishLine", {
+      io.in(room).emit("commentatorAnnounceUserAtFinishLine", {
         index
       });
-      if(connectedUsers.every(user=>user.Isfinished===true)){
+      if (connectedUsers.every(user => user.Isfinished === true)) {
         position = 0;
+        raceFinished = true;
         io.in(room).emit('raceFinished');
         let timeSpent = raceTime - raceTimeCountDown;
-        io.in(room).emit('commentatorAnnouncePlacements',{
+        io.in(room).emit('commentatorAnnouncePlacements', {
           timeSpent,
           connectedUsers
         });
+        raceTimeCountDown = 1;
       }
     }
   });

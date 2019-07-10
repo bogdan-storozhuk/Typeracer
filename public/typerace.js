@@ -1,16 +1,23 @@
-import { Commentator } from './commentator';
 let text = '';
 let correctSymbolsNumber = 0;
 let users = [];
 let raceFinished = false;
 let userFinished = false;
+let correctTextFactory = new CorrectTextFactory();
+
+/*               PROXY                       */
+let correctTextFactoryProxy = new Proxy(correctTextFactory, {
+    get(target, prop) {
+        console.log(`Вызов ${prop}`);
+        return target[prop];
+    }
+});
 
 const onChangedConnectedUsers = (socket) => {
     socket.on('changedConnectedUsers', ({
         connectedUsers,
         textLength
     }) => {
-        debugger;
         const userList = document.getElementById("userList");
         while (userList.firstChild) {
             userList.removeChild(userList.firstChild);
@@ -47,35 +54,8 @@ window.onbeforeunload = () => {
     });
 }
 
-const getCorrectSymbolsNumber = (chekedText, text) => {
-    let number = 0;
-    for (let i = 0; i < chekedText.length; i++) {
-        if (chekedText[i] !== text[i]) {
-            break;
-        }
-
-        number++;
-    }
-    return number;
-}
-
 const highlightText = (correctSymbolsNumber) => {
-    const textElement = document.getElementById("typing-words");
-    if (correctSymbolsNumber <= 0) {
-        textElement.innerHTML = (`<span class='green-symbol'>${text[0]}</span>` + text.slice(1));
-    }
-
-    if (correctSymbolsNumber > 0) {
-        const nextSymbolIndex = correctSymbolsNumber;
-        const correctText = text.slice(0, correctSymbolsNumber);
-        const nextSymbol = text[nextSymbolIndex];
-        const remainingText = text.slice(nextSymbolIndex + 1);
-        const nextSymbolText =  nextSymbol? `<span class='green-symbol'>${nextSymbol}</span>` : '';
-        textElement.innerHTML = (`<span class='red-symbols'>${correctText}</span>` 
-        + nextSymbolText
-        + remainingText);
-    }
-
+    setHtmlByElementId("typing-words", correctTextFactoryProxy.createHighlightText(correctSymbolsNumber, text));
 }
 
 window.onload = () => {
@@ -90,6 +70,7 @@ window.onload = () => {
             token: jwt
         });
         document.getElementById('txtInput').value = '';
+        const wordsLeft = document.querySelector('#words-left');
 
         socket.on('roomClosed', ({
             leftToWait
@@ -108,11 +89,9 @@ window.onload = () => {
             }, 1000);
         });
 
-        const wordsLeft = document.querySelector('#words-left');
-
         onChangedConnectedUsers(socket);
 
-        socket.on('getTexts', async () => {
+        socket.on('getTexts', () => {
             fetch('/texts/', {
                     method: 'GET',
                     headers: {
@@ -129,9 +108,6 @@ window.onload = () => {
                             const checkedText = target.value;
                             correctSymbolsNumber = getCorrectSymbolsNumber(checkedText, text);
                             highlightText(correctSymbolsNumber);
-                            // if(text.length-correctSymbolsNumber===30){
-                            //     socket.emit('someoneAlmostAtFinish');
-                            // }
                             if (correctSymbolsNumber === text.length && userFinished === false) {
                                 userFinished = true;
                                 socket.emit('CrossedTheFinishLine', {
@@ -154,22 +130,19 @@ window.onload = () => {
             countdown
         }) => {
             if (!raceFinished) {
-                const timer = document.getElementById('time');
-                timer.textContent = `The next race starts in: ${countdown}`;
+                setTextByElementId('time', `The next race starts in: ${countdown}`);
             }
         });
 
         socket.on('raceTimer', ({
             raceTimeCountDown
         }) => {
-            const timer = document.getElementById('until-end');
-            timer.innerHTML = `<span>${raceTimeCountDown}</span> until the end`;
+            setHtmlByElementId('until-end', `<span>${raceTimeCountDown}</span> until the end`);
         });
 
         socket.on('startRacing', () => {
             document.getElementById('txtInput').removeAttribute('disabled');
-            const timer = document.getElementById('time');
-            timer.textContent = 'Race has started';
+            setTextByElementId('time', 'Race has started');
         });
 
         socket.on('raceFinished', () => {
@@ -180,9 +153,7 @@ window.onload = () => {
                 text += `${value.email} took ${index + 1} place <br>`;
             });
 
-
-            const timer = document.getElementById('time');
-            timer.innerHTML = text;
+            setHtmlByElementId('time', text);
             let seconds = 5;
             let showResutInterval = setInterval(() => {
                 seconds--;
@@ -193,49 +164,76 @@ window.onload = () => {
 
             }, 1000);
         });
-        const SaySomething = (words) => {
-            const TextBubble = document.getElementById('commentatorText');
-            TextBubble.textContent = words;
-        }
+
         socket.on('commentatorWelcome', () => {
             const welcomeWords = "На улице сейчас немного пасмурно, но на Львов Арена сейчас просто замечательная атмосфера: двигатели рычат, зрители улыбаются а гонщики едва заметно нервничают и готовят своих железных коней до заезда. А комментировать это все действо Вам буду я, Эскейп Ентерович и я рад вас приветствовать со словами Доброго Вам дня господа!";
             SaySomething(welcomeWords);
         });
-        socket.on('commentatorUpdateOnPosition', () => {
-            const updateWords = ["На mersedes сейчас первый", "за ним идет", "а третьим идет", "за которым следует"];
+        socket.on('commentatorUpdateOnPosition', ({
+            raceTimeCountDown
+        }) => {
+            const updateWords = ["На mersedes сейчас первый", " ,за ним идет", " ,а третьим идет", " ,за которым следует"];
             let text = "";
             for (i = 0; i < users.length; i++) {
-                text += `${updateWords[i]} ${users[i].email}`;
+                let typeDifference = users[i + 1] ? `с преимуществом в ${users[i].correctSymbols-users[i+1].correctSymbols} букв` : '';
+                text += `${updateWords[i]} ${users[i].email} ${typeDifference}`;
             }
+            text += `. До конца гонки ${raceTimeCountDown} секунд`;
             SaySomething(text);
         });
-        socket.on('AnnounceUserAtFinishLine', ({
+        socket.on('commentatorAnnounceUserAtFinishLine', ({
             index
         }) => {
-            let text = `${users[index].email} пересек финишную прямую.`;
+            let text = `Финишную прямую пересек ${users[index].email}.`;
             SaySomething(text);
         });
         socket.on('commentatorAnnouncePlacements', ({
             timeSpent,
             connectedUsers
         }) => {
-            const placementsWords = ["Финальный результат: первое место занимает", "второе место занимает", "а третьим пришел", "за которым следует"];
+            const placementsWords = ["Финальный результат: первое место занимает", " ,второе место занимает", " ,а третьим пришел", " ,за которым следует"];
             let text = '';
             for (i = 0; i < users.length; i++) {
                 text += `${placementsWords[i]} ${connectedUsers[i].email}`;
             }
-            text += `Гонка проходила ${timeSpent} секунд. `;
+            text += `.Гонка проходила ${timeSpent} секунд. `;
             SaySomething(text);
         });
         socket.on('commentatorAlmostFinished', ({
             connectedUsers
         }) => {
-            const placementsWords = ["До финиша осталось совсем немного и похоже что первым его может пересечь ", "Второе место может остаться", "А третье "];
+            const placementsWords = ["До финиша осталось совсем немного и похоже что первым его может пересечь", " ,второе место может остаться", " ,а третье", " ,четвертое же"];
             let text = '';
             for (i = 0; i < users.length; i++) {
                 text += `${placementsWords[i]} ${connectedUsers[i].email}`;
             }
             SaySomething(text);
+        });
+        socket.on('commentatorAnnounceRacers', ({
+            connectedUsers
+        }) => {
+            let text = 'Гонка только началась, а тем временем, список гонщиков:';
+            const placementsWords = ["На ferrari под номером 1", ", под номером 2", ", а номером 3", ", номером 4 же"];
+            for (i = 0; i < users.length; i++) {
+                text += `${placementsWords[i]} ${connectedUsers[i].email}`;
+            }
+            SaySomething(text);
+        });
+        socket.on('commentatorFacts', () => {
+            fetch('/facts/', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + jwt,
+                    }
+                })
+                .then(res => {
+                    res.text().then(result => {
+                        SaySomething(result);
+                    })
+                }).catch(err => {
+                    console.log('request went wrong');
+                    location.replace('/login');
+                })
         });
     }
 }
